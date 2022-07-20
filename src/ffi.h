@@ -44,10 +44,10 @@ typedef void (*EncodeCallback)(const uint8_t *data, int len, int64_t pts,
 
 void *new_encoder(const char *name, int width, int height, int pixfmt,
                   int bit_rate, int time_base_num, int time_base_den,
-                  int gop, int quality, int rc, int *linesize, int *offset,
+                  int gop, int quality, int rc,
                   EncodeCallback callback);
 void *new_decoder(const char *name, int device_type, DecodeCallback callback);
-int encode(void *encoder, const uint8_t *data, int length, const void *obj);
+int encode(void *encoder, const uint8_t *data, int length, int *linesize, int *offset, const void *obj);
 int decode(void *decoder, const uint8_t *data, int length, const void *obj);
 void free_encoder(void *encoder);
 void free_decoder(void *decoder);

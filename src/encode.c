@@ -234,7 +234,7 @@ static int set_rate_control(void *priv_data, const char *name, int rc) {
 Encoder *new_encoder(const char *name, int width, int height, int pixfmt,
                      int bit_rate, int time_base_num,
                      int time_base_den, int gop, int quality, int rc,
-                     int *linesize, int *offset,
+                    //  int *linesize, int *offset,
                      EncodeCallback callback) {
   const AVCodec *codec = NULL;
   AVCodecContext *c = NULL;
@@ -330,12 +330,12 @@ Encoder *new_encoder(const char *name, int width, int height, int pixfmt,
   //                                encoder->offset, length) != 0)
   //   goto _exit;
 
-  for (int i = 0; i < AV_NUM_DATA_POINTERS; i++) {
-    encoder->offset[i] = offset[i];
-    encoder->frame->linesize[i] = linesize[i];
-    // linesize[i] = frame->linesize[i];
-    // offset[i] = encoder->offset[i];
-  }
+  // for (int i = 0; i < AV_NUM_DATA_POINTERS; i++) {
+  //   encoder->offset[i] = offset[i];
+  //   encoder->frame->linesize[i] = linesize[i];
+  //   // linesize[i] = frame->linesize[i];
+  //   // offset[i] = encoder->offset[i];
+  // }
 
   return encoder;
 
@@ -412,7 +412,7 @@ _exit:
   return encoded ? 0 : -1;
 }
 
-int encode(Encoder *encoder, const uint8_t *data, int length, const void *obj) {
+int encode(Encoder *encoder, const uint8_t *data, int length, int *linesize, int *offset, const void *obj) {
   int ret;
 
 #ifdef CFG_PKG_TRACE
@@ -423,6 +423,12 @@ int encode(Encoder *encoder, const uint8_t *data, int length, const void *obj) {
     fprintf(stderr, "av_frame_make_writable failed: %s\n", av_err2str(ret));
     return ret;
   }
+
+  for (int i = 0; i < AV_NUM_DATA_POINTERS; i++) {
+    encoder->offset[i] = offset[i];
+    encoder->frame->linesize[i] = linesize[i];
+  }
+
   if ((ret = fill_frame(encoder->frame, (uint8_t *)data, length,
                         encoder->offset)) != 0)
     return ret;

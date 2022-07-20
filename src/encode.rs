@@ -26,9 +26,8 @@ pub struct EncodeContext {
     pub height: i32,
     pub pixfmt: AVPixelFormat,
     // pub align: i32,
-    pub stride_y: i32,
-    pub offset0: i32,
-    pub offset1: i32,
+    // pub stride: [usize; 2],
+    // pub offset: [usize; 2],
     // pub length: i32,
     pub bitrate: i32,
     pub timebase: [i32; 2],
@@ -52,22 +51,22 @@ pub struct Encoder {
     codec: Box<c_void>,
     frames: *mut Vec<EncodeFrame>,
     pub ctx: EncodeContext,
-    pub linesize: Vec<i32>,
-    pub offset: Vec<i32>,
+    // pub linesize: Vec<i32>,
+    // pub offset: Vec<i32>,
 }
 
 impl Encoder {
     pub fn new(ctx: EncodeContext) -> Result<Self, ()> {
         unsafe {
-            let mut linesize = Vec::<i32>::new();
-            linesize.resize(AV_NUM_DATA_POINTERS as _, 0);
-            linesize[0] = ctx.stride_y;
-            linesize[1] = ctx.stride_y / 2;
-            linesize[2] = ctx.stride_y / 2; // TODO nv12
-            let mut offset = Vec::<i32>::new();
-            offset.resize(AV_NUM_DATA_POINTERS as _, 0);
-            offset[0] = ctx.offset0;
-            offset[1] = ctx.offset1;
+            // let mut linesize = Vec::<i32>::new();
+            // linesize.resize(AV_NUM_DATA_POINTERS as _, 0);
+            // linesize[0] = ctx.stride[0] as _;
+            // linesize[1] = (ctx.stride[1] / 2) as _ ;
+            // linesize[2] = (ctx.stride[1] / 2) as _;
+            // let mut offset = Vec::<i32>::new();
+            // offset.resize(AV_NUM_DATA_POINTERS as _, 0);
+            // offset[0] = ctx.offset[0] as _;
+            // offset[1] = ctx.offset[1] as _;
             // let mut length = Vec::<i32>::new();
             // length.resize(1, 0);
             let codec = new_encoder(
@@ -81,8 +80,6 @@ impl Encoder {
                 ctx.gop,
                 ctx.quality as _,
                 ctx.rc as _,
-                linesize.as_mut_ptr(),
-                offset.as_mut_ptr(),
                 Some(Encoder::callback),
             );
 
@@ -94,19 +91,26 @@ impl Encoder {
                 codec: Box::from_raw(codec as *mut c_void),
                 frames: Box::into_raw(Box::new(Vec::<EncodeFrame>::new())),
                 ctx,
-                linesize,
-                offset,
+                // linesize,
+                // offset,
             })
         }
     }
 
-    pub fn encode(&mut self, data: &[u8]) -> Result<&mut Vec<EncodeFrame>, i32> {
+    pub fn encode(
+        &mut self,
+        data: &[u8],
+        mut linesize: Vec<i32>,
+        mut offset: Vec<i32>,
+    ) -> Result<&mut Vec<EncodeFrame>, i32> {
         unsafe {
             (&mut *self.frames).clear();
             let result = encode(
                 &mut *self.codec,
                 (*data).as_ptr(),
                 data.len() as _,
+                linesize.as_mut_ptr(),
+                offset.as_mut_ptr(),
                 self.frames as *const _ as *const c_void,
             );
             if result != 0 {
@@ -243,7 +247,7 @@ impl Encoder {
                     if let Ok(mut encoder) = Encoder::new(c) {
                         log::debug!("{} new {:?}", codec.name, start.elapsed());
                         let start = Instant::now();
-                        if let Ok(_) = encoder.encode(&yuv) {
+                        if let Ok(_) = encoder.encode(&yuv,vec![],vec![]) { //TODO
                             log::debug!("{} encode {:?}", codec.name, start.elapsed());
                             infos.lock().unwrap().push(codec);
                         } else {
