@@ -25,7 +25,11 @@ pub struct EncodeContext {
     pub width: i32,
     pub height: i32,
     pub pixfmt: AVPixelFormat,
-    pub align: i32,
+    // pub align: i32,
+    pub stride_y: i32,
+    pub offset0: i32,
+    pub offset1: i32,
+    // pub length: i32,
     pub bitrate: i32,
     pub timebase: [i32; 2],
     pub gop: i32,
@@ -50,7 +54,6 @@ pub struct Encoder {
     pub ctx: EncodeContext,
     pub linesize: Vec<i32>,
     pub offset: Vec<i32>,
-    pub length: i32,
 }
 
 impl Encoder {
@@ -58,16 +61,20 @@ impl Encoder {
         unsafe {
             let mut linesize = Vec::<i32>::new();
             linesize.resize(AV_NUM_DATA_POINTERS as _, 0);
+            linesize[0] = ctx.stride_y;
+            linesize[1] = ctx.stride_y / 2;
+            linesize[2] = ctx.stride_y / 2; // TODO nv12
             let mut offset = Vec::<i32>::new();
             offset.resize(AV_NUM_DATA_POINTERS as _, 0);
-            let mut length = Vec::<i32>::new();
-            length.resize(1, 0);
+            offset[0] = ctx.offset0;
+            offset[1] = ctx.offset1;
+            // let mut length = Vec::<i32>::new();
+            // length.resize(1, 0);
             let codec = new_encoder(
                 CString::new(ctx.name.as_str()).map_err(|_| ())?.as_ptr(),
                 ctx.width,
                 ctx.height,
                 ctx.pixfmt as c_int,
-                ctx.align,
                 ctx.bitrate as _,
                 ctx.timebase[0],
                 ctx.timebase[1],
@@ -76,7 +83,6 @@ impl Encoder {
                 ctx.rc as _,
                 linesize.as_mut_ptr(),
                 offset.as_mut_ptr(),
-                length.as_mut_ptr(),
                 Some(Encoder::callback),
             );
 
@@ -90,7 +96,6 @@ impl Encoder {
                 ctx,
                 linesize,
                 offset,
-                length: length[0],
             })
         }
     }
@@ -265,12 +270,9 @@ impl Encoder {
 
     fn dummy_yuv(ctx: EncodeContext) -> Result<Vec<u8>, ()> {
         let mut yuv = vec![];
-        if let Ok((_, _, len)) = ffmpeg_linesize_offset_length(
-            ctx.pixfmt,
-            ctx.width as _,
-            ctx.height as _,
-            ctx.align as _,
-        ) {
+        if let Ok((_, _, len)) =
+            ffmpeg_linesize_offset_length(ctx.pixfmt, ctx.width as _, ctx.height as _, 0 as _)
+        {
             yuv.resize(len as _, 0);
             return Ok(yuv);
         }

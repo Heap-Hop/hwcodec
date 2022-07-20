@@ -15,14 +15,22 @@
 #define AV_LOG_DEBUG 48
 #define AV_LOG_TRACE 56
 
-enum AVPixelFormat {
+enum AVPixelFormat
+{
   AV_PIX_FMT_YUV420P = 0,
   AV_PIX_FMT_NV12 = 23,
 };
 
-enum Quality { Quality_Default, Quality_High, Quality_Medium, Quality_Low };
+enum Quality
+{
+  Quality_Default,
+  Quality_High,
+  Quality_Medium,
+  Quality_Low
+};
 
-enum RateContorl {
+enum RateContorl
+{
   RC_DEFAULT,
   RC_CBR,
   RC_VBR,
@@ -35,9 +43,9 @@ typedef void (*EncodeCallback)(const uint8_t *data, int len, int64_t pts,
                                const void *obj);
 
 void *new_encoder(const char *name, int width, int height, int pixfmt,
-                  int align, int bit_rate, int time_base_num, int time_base_den,
+                  int bit_rate, int time_base_num, int time_base_den,
                   int gop, int quality, int rc, int *linesize, int *offset,
-                  int *length, EncodeCallback callback);
+                  EncodeCallback callback);
 void *new_decoder(const char *name, int device_type, DecodeCallback callback);
 int encode(void *encoder, const uint8_t *data, int length, const void *obj);
 int decode(void *decoder, const uint8_t *data, int length, const void *obj);
@@ -49,4 +57,4 @@ int set_bitrate(void *encoder, int bitrate);
 int av_log_get_level(void);
 void av_log_set_level(int level);
 
-#endif  // FFI_H
+#endif // FFI_H

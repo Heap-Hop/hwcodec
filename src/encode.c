@@ -232,9 +232,9 @@ static int set_rate_control(void *priv_data, const char *name, int rc) {
 }
 
 Encoder *new_encoder(const char *name, int width, int height, int pixfmt,
-                     int align, int bit_rate, int time_base_num,
+                     int bit_rate, int time_base_num,
                      int time_base_den, int gop, int quality, int rc,
-                     int *linesize, int *offset, int *length,
+                     int *linesize, int *offset,
                      EncodeCallback callback) {
   const AVCodec *codec = NULL;
   AVCodecContext *c = NULL;
@@ -261,7 +261,7 @@ Encoder *new_encoder(const char *name, int width, int height, int pixfmt,
   frame->width = width;
   frame->height = height;
 
-  if ((ret = av_frame_get_buffer(frame, align)) < 0) {
+  if ((ret = av_frame_get_buffer(frame, 64)) < 0) {
     fprintf(stderr, "av_frame_get_buffer: %s\n", av_err2str(ret));
     goto _exit;
   }
@@ -272,7 +272,7 @@ Encoder *new_encoder(const char *name, int width, int height, int pixfmt,
   }
   if ((ret = av_new_packet(
            pkt, av_image_get_buffer_size(frame->format, frame->width,
-                                         frame->height, align))) < 0) {
+                                         frame->height, 64))) < 0) {
     fprintf(stderr, "av_new_packet: %s\n", av_err2str(ret));
     goto _exit;
   }
@@ -325,13 +325,16 @@ Encoder *new_encoder(const char *name, int width, int height, int pixfmt,
   encoder->out = 0;
 #endif
 
-  if (get_linesize_offset_length(pixfmt, width, height, align, NULL,
-                                 encoder->offset, length) != 0)
-    goto _exit;
+  
+  // if (get_linesize_offset_length(pixfmt, width, height, align, NULL,
+  //                                encoder->offset, length) != 0)
+  //   goto _exit;
 
   for (int i = 0; i < AV_NUM_DATA_POINTERS; i++) {
-    linesize[i] = frame->linesize[i];
-    offset[i] = encoder->offset[i];
+    encoder->offset[i] = offset[i];
+    encoder->frame->linesize[i] = linesize[i];
+    // linesize[i] = frame->linesize[i];
+    // offset[i] = encoder->offset[i];
   }
 
   return encoder;
