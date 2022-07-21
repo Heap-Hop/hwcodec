@@ -26,8 +26,8 @@ pub struct EncodeContext {
     pub height: i32,
     pub pixfmt: AVPixelFormat,
     // pub align: i32,
-    // pub stride: [usize; 2],
-    // pub offset: [usize; 2],
+    pub linesize: Vec<i32>,
+    pub offset: Vec<i32>,
     // pub length: i32,
     pub bitrate: i32,
     pub timebase: [i32; 2],
@@ -80,6 +80,8 @@ impl Encoder {
                 ctx.gop,
                 ctx.quality as _,
                 ctx.rc as _,
+                ctx.linesize.as_ptr(),
+                ctx.offset.as_ptr(),
                 Some(Encoder::callback),
             );
 
@@ -100,8 +102,6 @@ impl Encoder {
     pub fn encode(
         &mut self,
         data: &[u8],
-        mut linesize: Vec<i32>,
-        mut offset: Vec<i32>,
     ) -> Result<&mut Vec<EncodeFrame>, i32> {
         unsafe {
             (&mut *self.frames).clear();
@@ -109,8 +109,6 @@ impl Encoder {
                 &mut *self.codec,
                 (*data).as_ptr(),
                 data.len() as _,
-                linesize.as_mut_ptr(),
-                offset.as_mut_ptr(),
                 self.frames as *const _ as *const c_void,
             );
             if result != 0 {
@@ -238,16 +236,17 @@ impl Encoder {
             for codec in codecs {
                 let yuv = yuv.clone();
                 let infos = infos.clone();
+                let ctx_cl = ctx.clone();
                 let handle = thread::spawn(move || {
                     let c = EncodeContext {
                         name: codec.name.clone(),
-                        ..ctx
+                        ..ctx_cl
                     };
                     let start = Instant::now();
                     if let Ok(mut encoder) = Encoder::new(c) {
                         log::debug!("{} new {:?}", codec.name, start.elapsed());
                         let start = Instant::now();
-                        if let Ok(_) = encoder.encode(&yuv,vec![],vec![]) { //TODO
+                        if let Ok(_) = encoder.encode(&yuv) { //TODO
                             log::debug!("{} encode {:?}", codec.name, start.elapsed());
                             infos.lock().unwrap().push(codec);
                         } else {
